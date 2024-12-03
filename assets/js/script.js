@@ -65,7 +65,7 @@ const ampsGraph = document.getElementById('ampsGraph');
 const voltsGraph = document.getElementById('voltsGraph');
 
 let isPowered = false;
-let currentTemp = 25;
+let currentTemp = 17;
 
 const componentSpecs = {
     r1: {
@@ -213,59 +213,24 @@ function updateTelemetry(speed) {
     const amps = ((speed / 100) * 2.5).toFixed(2);
     const watts = Math.round(volts * amps);
 
+    // Aplicação de variação nos valores para simulação
     const rpmVariation = rpm + (Math.random() * 20 - 10);
     const voltsVariation = volts + (Math.random() * 2 - 1);
     const ampsVariation = (parseFloat(amps) + (Math.random() * 0.1 - 0.05)).toFixed(2);
     const wattsVariation = Math.round(voltsVariation * ampsVariation);
 
+    // Atualização dos elementos de texto
     rpmValue.textContent = Math.round(rpmVariation);
     wattsValue.textContent = wattsVariation;
     ampsValue.textContent = ampsVariation;
     voltsValue.textContent = Math.round(voltsVariation);
 
+    // Atualização de temperatura
     tempValue.textContent = `${Math.round(currentTemp)}°C`;
     tempGraph.style.height = `${(currentTemp / 130) * 100}%`;
 
-    if (rpmVariation > 1500) {
-        rpmValue.style.color = '#e74c3c';
-    } else if (rpmVariation > 1000) {
-        rpmValue.style.color = '#f39c12';
-    } else {
-        rpmValue.style.color = '#2ecc71';
-    }
-
-    if (wattsVariation > 200) {
-        wattsValue.style.color = '#e74c3c';
-    } else if (wattsVariation > 150) {
-        wattsValue.style.color = '#f39c12';
-    } else {
-        wattsValue.style.color = '#2ecc71';
-    }
-
-    if (ampsVariation > 2.0) {
-        ampsValue.style.color = '#e74c3c';
-    } else if (ampsVariation > 1.5) {
-        ampsValue.style.color = '#f39c12';
-    } else {
-        ampsValue.style.color = '#2ecc71';
-    }
-
-    if (voltsVariation > 100) {
-        voltsValue.style.color = '#e74c3c';
-    } else if (voltsVariation > 80) {
-        voltsValue.style.color = '#f39c12';
-    } else {
-        voltsValue.style.color = '#2ecc71';
-    }
-
-    if (currentTemp > 75) {
-        tempValue.style.color = '#e74c3c';
-    } else if (currentTemp > 50) {
-        tempValue.style.color = '#f39c12';
-    } else {
-        tempValue.style.color = '#2ecc71';
-    }
-
+    // Atualização da eficiência operacional
+    const minEfficiency = 60; // Eficiência mínima
     const idealRPM = 1750;
     const idealVolts = 110;
     const idealAmps = 2.5;
@@ -276,24 +241,28 @@ function updateTelemetry(speed) {
     const ampsDeviation = Math.abs(1 - (ampsVariation / idealAmps));
     const tempDeviation = Math.abs(1 - (currentTemp / idealTemp));
 
-    const operatingEfficiency = (
-        (1 - (rpmDeviation * 0.3)) *
-        (1 - (voltsDeviation * 0.2)) *
-        (1 - (ampsDeviation * 0.2)) *
-        (1 - (tempDeviation * 0.3))
-    ) * 100;
+    let efficiency = (
+        (1 - rpmDeviation * - 0.3) *
+        (1 - voltsDeviation * - 0.2) *
+        (1 - ampsDeviation * - 0.2) *
+        (1 - tempDeviation * - 0.3)
+    ) * 50;
 
-    operatingValue.textContent = Math.round(operatingEfficiency) + '%';
-    operatingGraph.style.height = `${operatingEfficiency}%`;
+    efficiency = Math.max(minEfficiency, efficiency); // Garante eficiência mínima de 60%
 
-    if (operatingEfficiency > 85) {
-        operatingValue.style.color = '#2ecc71';
-    } else if (operatingEfficiency > 70) {
-        operatingValue.style.color = '#f39c12';
+    operatingValue.textContent = Math.round(efficiency) + '%';
+    operatingGraph.style.height = `${efficiency}%`;
+
+    // Cores condicionais para eficiência
+    if (efficiency > 85) {
+        operatingValue.style.color = '#2ecc71'; // Verde
+    } else if (efficiency > 70) {
+        operatingValue.style.color = '#f39c12'; // Laranja
     } else {
-        operatingValue.style.color = '#e74c3c';
+        operatingValue.style.color = '#e74c3c'; // Vermelho
     }
 
+    // Registro de picos e eventos críticos
     recordPeak('voltage', voltsVariation);
     recordPeak('temperature', currentTemp);
     recordPeak('speed', rpmVariation);
@@ -302,24 +271,26 @@ function updateTelemetry(speed) {
     recordCriticalEvent('temperature', currentTemp, 75);
     recordCriticalEvent('speed', rpmVariation, 1700);
 
-    historyData.rpm.push((rpmVariation/rpmBase) * 100);
+    // Atualização dos dados históricos para gráficos
+    historyData.rpm.push((rpmVariation / rpmBase) * 100);
     historyData.rpm.shift();
 
-    historyData.watts.push((wattsVariation/275) * 100);
+    historyData.watts.push((wattsVariation / 275) * 100);
     historyData.watts.shift();
 
-    historyData.amps.push((ampsVariation/2.5) * 100);
+    historyData.amps.push((ampsVariation / 2.5) * 100);
     historyData.amps.shift();
 
-    historyData.volts.push((voltsVariation/110) * 100);
+    historyData.volts.push((voltsVariation / 110) * 100);
     historyData.volts.shift();
 
-    historyData.temp.push((currentTemp/130) * 100);
+    historyData.temp.push((currentTemp / 130) * 100);
     historyData.temp.shift();
 
-    historyData.operating.push(operatingEfficiency);
+    historyData.operating.push(efficiency);
     historyData.operating.shift();
 
+    // Atualização de gráficos
     const rpmCanvas = document.querySelector('.gauge:nth-child(1) .history-canvas');
     const wattsCanvas = document.querySelector('.gauge:nth-child(2) .history-canvas');
     const ampsCanvas = document.querySelector('.gauge:nth-child(3) .history-canvas');
@@ -336,26 +307,28 @@ function updateTelemetry(speed) {
 
     updateTemperature(speed);
     checkWarningConditions(speed, rpmVariation, wattsVariation, ampsVariation);
-    
+
+    // Atualização do indicador de temperatura
     if (currentTemp > 75) {
-        tempIndicator.style.background = '#e74c3c'; // Red
+        tempIndicator.style.background = '#e74c3c'; // Vermelho
     } else if (currentTemp > 50) {
-        tempIndicator.style.background = '#f39c12'; // Orange
+        tempIndicator.style.background = '#f39c12'; // Laranja
     } else {
-        tempIndicator.style.background = '#2ecc71'; // Green
+        tempIndicator.style.background = '#2ecc71'; // Verde
     }
 
     tempIndicator.style.boxShadow = `0 0 10px ${tempIndicator.style.background}`;
 }
 
+
 function updateTemperature(speed) {
-    const targetTemp = 25 + (speed * 0.5);
+    const targetTemp = 25 + (speed * 0.05);
     currentTemp = currentTemp + (targetTemp - currentTemp) * 0.1;
 }
 
 function checkWarningConditions(speed, rpm, watts, amps) {
     const showWarning = speed > 90 || 
-                      currentTemp > 75 || 
+                      currentTemp > 50 || 
                       watts > 250 || 
                       amps > 2.3;
 
