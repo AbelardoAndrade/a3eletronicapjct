@@ -85,7 +85,8 @@ function updateReadings() {
 
 function updateMotor() {
     if (!isRunning) {
-        const coolingRate = 0.02 * (temperature - 25); // Dissipação gradual proporcional
+        // Resfriamento passivo do motor quando desligado
+        const coolingRate = 0.0002 * (temperature - 25); // Dissipação proporcional
         temperature -= coolingRate;
         temperature = Math.max(25, temperature);
         updateLEDs();
@@ -95,44 +96,59 @@ function updateMotor() {
     }
 
     if (isRunning && !faultCondition) {
+        // Leitura de valores dos controles
         const resistance = parseInt(document.getElementById('var1').value) || 0;
         const currentLimit = parseInt(document.getElementById('currentLimit').value) || 0;
         const accelRate = parseInt(document.getElementById('accelRate').value) || 0;
 
-        const maxSpeed = 1800;
+        // Definição dos parâmetros do motor
+        const maxSpeed = 1750; // Velocidade máxima do motor
         const targetSpeed = maxSpeed * (1 - (resistance / 500));
         motorSpeed += (targetSpeed - motorSpeed) * (accelRate / 2000);
 
+        // Atualização da temperatura com base na velocidade do motor
         temperature += (motorSpeed / maxSpeed) * 0.0002;
         temperature = Math.min(80, Math.max(25, temperature));
 
+        // Atualização do consumo de corrente
         currentDraw = (motorSpeed / maxSpeed) * (currentLimit / 100) * 10;
 
-        rotationAngle = (rotationAngle + (motorSpeed / 60) * 6) % 360;
+        // Atualização do ângulo de rotação do motor
+        rotationAngle = (rotationAngle + (motorSpeed / 90) * 10) % 360;
 
+        // Cálculo da eficiência mínima de 60%
+        const minEfficiency = 60; // Eficiência mínima
+        const efficiency = minEfficiency + (1 - motorSpeed / maxSpeed) * (100 - minEfficiency);
+
+        // Atualização dos elementos visuais
         document.getElementById('scrAngle').textContent = `${Math.round((resistance / 500) * 180)}°`;
         document.getElementById('motorSpeed').textContent = `${Math.round(motorSpeed)} RPM`;
         document.getElementById('temperature').textContent = `${temperature.toFixed(1)}°C`;
         document.getElementById('currentDraw').textContent = `${currentDraw.toFixed(1)} A`;
         document.getElementById('powerFactor').textContent = (0.8 + (motorSpeed / maxSpeed) * 0.2).toFixed(2);
-        document.getElementById('efficiency').textContent = `${Math.round((maxSpeed - motorSpeed) / maxSpeed * 100)}%`;
+        document.getElementById('efficiency').textContent = `${Math.round(efficiency)}%`;
 
         document.getElementById('rotor').style.transform = `rotate(${rotationAngle}deg)`;
 
+        // Atualização do gráfico de velocidade
         speedHistory.push(motorSpeed);
         speedHistory.shift();
         Plotly.update(speedGraphDiv, { y: [[...speedHistory]] });
 
+        // Verificação de condições de falha
         if (temperature > 70 || currentDraw > 9.5) {
             faultCondition = true;
             showAlert('Fault detected! System shutdown initiated.');
         }
     }
 
+    // Atualizações de LEDs e leituras
     updateLEDs();
     updateReadings();
     requestAnimationFrame(updateMotor);
 }
+
+
 
 
 // Event Listeners
